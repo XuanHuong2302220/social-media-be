@@ -15,6 +15,7 @@ import notificationRoutes from "./routes/notificationRoute.js";
 import replyCommentRoutes from "./routes/replyCommentRoute.js";
 import messageRoutes from "./routes/chat/messageRoute.js";
 import conversationRoutes from "./routes/chat/conversationRoute.js";
+import userRoutes from "./routes/userRoute.js";
 
 dotenv.config();
 const app = express();
@@ -35,6 +36,7 @@ app.use("/api/follow", followRoutes);
 app.use("/api/notify", notificationRoutes);
 app.use("/api/message", messageRoutes);
 app.use("/api/conversation", conversationRoutes);
+app.use("/api/user", userRoutes);
 
 //envConfig
 const PORT = process.env.PORT;
