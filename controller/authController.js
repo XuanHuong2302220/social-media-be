@@ -85,8 +85,11 @@ export const signup = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
-    const { username, password } = req.body;
-    const user = await User.findOne({ username });
+    const { username, password, email } = req.body;
+    const user = await User.findOne({
+      $or: [{ email: email }, { username: username }],
+    });
+
     const isHashedPassword = await bcryptjs.compare(
       password,
       user?.password || ""
