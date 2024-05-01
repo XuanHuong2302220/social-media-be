@@ -1,6 +1,7 @@
 import Post from "./../models/post/postModel.js";
 import Comment from "../models/post/commentModel.js";
 import LikePost from "../models/post/likePostModel.js";
+import Follow from "./../models/followModel.js";
 
 export const getPosts = async (req, res) => {
   try {
@@ -24,7 +25,7 @@ export const getPosts = async (req, res) => {
     );
 
     res.status(200).json({
-      quantity: posts.length,
+      quantity: posts?.length,
       posts: postsWithComments,
     });
   } catch (error) {
@@ -131,6 +132,45 @@ export const deletePost = async (req, res) => {
     res.status(200).json("Post deleted successfully");
   } catch (error) {
     console.log("Error in deletePost controller", error.message);
+    res.status(500).json("Internal server error");
+  }
+};
+
+export const getPostHome = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const followings = await Follow.findOne({ authorId: userId });
+
+    const postsPromises = followings.followingId?.map((following) => {
+      return Post.find({ authorId: following });
+    });
+
+    const posts = await Promise.all(postsPromises);
+
+    const post = await Promise.all(
+      posts.map(async (post) => {
+        return post.map((p) => {
+          return {
+            _id: p._id,
+            authorId: p.authorId,
+            title: p.title,
+            image: p.image,
+            like: p.likePostId.length,
+            comment: p.commentId.length,
+          };
+        });
+      })
+    );
+
+    const postArray = post.flat();
+
+    return res.status(200).json({
+      quantity: postArray?.length,
+      posts: postArray,
+    });
+  } catch (error) {
+    console.log("Error in getPostHome controller", error.message);
     res.status(500).json("Internal server error");
   }
 };

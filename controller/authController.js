@@ -33,8 +33,10 @@ export const signup = async (req, res) => {
 
     if (password !== confirmPassword)
       res.status(400).json("password don't match");
-    const user = await User.findOne({ username });
-    if (user) res.status(400).json("username already exist");
+    const user = await User.findOne({
+      $or: [{ username: username }, { email: email }],
+    });
+    if (user) res.status(400).json("username or email already exist");
 
     const salt = await bcryptjs.genSalt(10);
     const hashedPassword = await bcryptjs.hash(password, salt);
@@ -89,6 +91,7 @@ export const login = async (req, res) => {
       password,
       user?.password || ""
     );
+
     if (!user || !isHashedPassword)
       return res.status(401).json("invalid username or password");
 
@@ -145,7 +148,7 @@ export const verifyEmail = async (req, res) => {
     });
     if (!tokenVerify) return res.status(400).send({ message: "Invalid link" });
 
-    await User.updateOne({ _id: user._id, isVerified: true });
+    await User.findByIdAndUpdate({ _id: user._id }, { isVerified: true });
     await Token.deleteOne({ token: token });
 
     res.status(200).send({ message: "Email verified successfully" });
