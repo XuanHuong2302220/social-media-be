@@ -2,6 +2,7 @@ import Post from "./../models/post/postModel.js";
 import Comment from "../models/post/commentModel.js";
 import LikePost from "../models/post/likePostModel.js";
 import Follow from "./../models/followModel.js";
+import User from "../models/userModel.js";
 
 export const getPosts = async (req, res) => {
   try {
@@ -11,13 +12,19 @@ export const getPosts = async (req, res) => {
     if (!posts || posts.length === 0)
       return res.status(400).json("Not post created yet");
 
-    const postsWithComments = await Promise.all(
-      posts.map(async (post) => {
+    const sortPostWithComments = [...posts];
+    sortPostWithComments.sort((a, b) => b.createdAt - a.createdAt);
+
+    const postDetails = await Promise.all(
+      sortPostWithComments.map(async (post) => {
+        const author = await User.findById(post.authorId);
+
         return {
           _id: post._id,
           authorId: post.authorId,
           title: post.title,
           image: post.image,
+          authorName: author.fullName,
           like: post.likePostId.length,
           comment: post.commentId.length,
         };
@@ -25,8 +32,7 @@ export const getPosts = async (req, res) => {
     );
 
     res.status(200).json({
-      quantity: posts?.length,
-      posts: postsWithComments,
+      posts: postDetails,
     });
   } catch (error) {
     console.log("Error in getPosts controller", error.message);
@@ -63,7 +69,8 @@ export const getPost = async (req, res) => {
 export const createPost = async (req, res) => {
   try {
     const { title, image } = req.body;
-    if (!image) return res.status(400).json("Please fill all the fields");
+    if (!image && !title)
+      return res.status(400).json("Please fill all the fields");
     const newPost = await Post.create({
       authorId: req.user._id,
       title,
@@ -84,10 +91,10 @@ export const createPost = async (req, res) => {
 export const editPost = async (req, res) => {
   try {
     const { id } = req.params;
-    const { image } = req.body;
+    const { image, title } = req.body;
 
     // check value
-    if (!id || !image)
+    if (!id || (!image && !title))
       return res.status(400).json("Please fill all the fields");
 
     //check post
@@ -101,7 +108,7 @@ export const editPost = async (req, res) => {
     //update post
     const updatedPost = await Post.findByIdAndUpdate(
       id,
-      { image },
+      { image, title },
       { new: true }
     );
     if (updatedPost) {
@@ -142,32 +149,40 @@ export const getPostHome = async (req, res) => {
 
     const followings = await Follow.findOne({ authorId: userId });
 
-    const postsPromises = followings.followingId?.map((following) => {
-      return Post.find({ authorId: following });
+    const myPosts = await Post.find({ authorId: userId });
+
+    if (!myPosts.length && !followings?.followingId?.length) {
+      return res.status(400).json("No posts available.");
+    }
+
+    const postsPromises =
+      followings?.followingId?.map((following) => {
+        return Post.find({ authorId: following });
+      }) || [];
+
+    const followingPosts = await Promise.all(postsPromises);
+
+    const allPosts = [...myPosts, ...followingPosts.flat()];
+
+    allPosts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    const postDetailsPromises = allPosts.map(async (p) => {
+      const author = await User.findById(p.authorId);
+      return {
+        _id: p._id,
+        authorId: p.authorId,
+        authorName: author.fullName,
+        title: p.title,
+        image: p.image,
+        like: p.likePostId.length,
+        comment: p.commentId.length,
+      };
     });
 
-    const posts = await Promise.all(postsPromises);
-
-    const post = await Promise.all(
-      posts.map(async (post) => {
-        return post.map((p) => {
-          return {
-            _id: p._id,
-            authorId: p.authorId,
-            title: p.title,
-            image: p.image,
-            like: p.likePostId.length,
-            comment: p.commentId.length,
-          };
-        });
-      })
-    );
-
-    const postArray = post.flat();
+    const postDetails = await Promise.all(postDetailsPromises);
 
     return res.status(200).json({
-      quantity: postArray?.length,
-      posts: postArray,
+      posts: postDetails,
     });
   } catch (error) {
     console.log("Error in getPostHome controller", error.message);

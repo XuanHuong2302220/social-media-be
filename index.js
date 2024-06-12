@@ -2,6 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import bodyParser from "body-parser";
+import cors from "cors";
 
 import connectMongodb from "./db/connectMongodb.js";
 
@@ -24,6 +25,13 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 app.use(bodyParser.json());
+app.use(
+  cors({
+    origin: [`${process.env.BASE_URL}`],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  })
+);
 
 //routes
 app.use("/api/auth", authRoutes);

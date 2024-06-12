@@ -6,15 +6,9 @@ import NotifyBox from "../models/notifyBoxModel.js";
 
 export const createLike = async (req, res) => {
   try {
-    const { typeLike } = req.body;
-
     const userLike = req.user._id;
 
     const { postId: postLike } = req.params;
-
-    if (!typeLike) {
-      return res.status(400).json({ message: "Please provide all the fields" });
-    }
 
     const like = await LikePost.findOne({ userLike, postLike });
 
@@ -26,8 +20,12 @@ export const createLike = async (req, res) => {
     const newLike = await LikePost.create({
       userLike,
       postLike,
-      typeLike,
     });
+
+    if (newLike) {
+      newLike.isLiked = true;
+      await newLike.save();
+    }
 
     const post = await Post.findById(postLike);
 
@@ -98,43 +96,22 @@ export const getLikes = async (req, res) => {
 
 export const getLike = async (req, res) => {
   try {
-    const { postId, id } = req.params;
+    const { postId } = req.params;
+    const id = req.user._id;
     const post = await Post.findById(postId);
     if (!post) res.status(400).json({ message: "Post not found" });
 
-    const like = await LikePost.findById(id);
-    if (!like) res.status(400).json({ message: "Like not found" });
+    const like = await LikePost.findOne({ userLike: id, postLike: postId });
+    if (!like)
+      res.status(400).json({ message: "You have not liked this post" });
 
-    res.status(200).json({ like: like });
+    res.status(200).json(like);
   } catch (error) {
     console.log("error in getLikeController", error.message);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
-export const updateLike = async (req, res) => {
-  try {
-    const { typeLike } = req.body;
 
-    const { postId, id } = req.params;
-
-    const post = await Post.findById(postId);
-
-    if (!post) res.status(400).json({ message: "Post not found" });
-
-    const like = await LikePost.findByIdAndUpdate(
-      id,
-      { typeLike },
-      { new: true }
-    );
-
-    if (!like) res.status(400).json({ message: "Like not found" });
-
-    res.status(200).json({ message: "Like updated successfully", like: like });
-  } catch (error) {
-    console.log("error in updateLikeController", error.message);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-};
 export const deleteLike = async (req, res) => {
   try {
     const { postId, id } = req.params;

@@ -59,7 +59,7 @@ export const signup = async (req, res) => {
       });
 
       const url = `${process.env.BASE_URL}/users/${newUser.id}/verify/${token.token}`;
-      await sendVerify(email, url);
+      await sendVerify(email, "verify email", url);
 
       await generateToken({ userID: newUser._id }, res);
       await Follow.create({
@@ -75,7 +75,7 @@ export const signup = async (req, res) => {
 
       res
         .status(201)
-        .send({ message: "An Email sent to your account please verify" });
+        .json({ message: "An Email sent to your account please verify" });
     }
   } catch (error) {
     console.log("Error in sign up Controller", error.message);
@@ -86,9 +86,12 @@ export const signup = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { username, password, email } = req.body;
+
     const user = await User.findOne({
-      $or: [{ email: email }, { username: username }],
+      $or: [{ username: username }, { email: email }],
     });
+
+    console.log(user);
 
     const isHashedPassword = await bcryptjs.compare(
       password,
@@ -105,13 +108,13 @@ export const login = async (req, res) => {
           userId: user._id,
           token: crypto.randomBytes(32).toString("hex"),
         }).save();
-        const url = `${process.env.BASE_URL}users/${user.id}/verify/${token.token}`;
+        const url = `${process.env.BASE_URL}/users/${user.id}/verify/${token.token}`;
         await sendVerify(user.email, "Verify Your Email ", url);
       }
 
       return res
         .status(400)
-        .send({ message: "An Email sent to your account please verify" });
+        .json("An Email sent to your account please verify");
     }
 
     await generateToken({ userID: user._id }, res);
@@ -122,6 +125,7 @@ export const login = async (req, res) => {
       username: user.username,
       gender: user.gender,
       birthday: user.birthday,
+      bio: user.bio,
     });
   } catch (error) {
     console.log("Error in login Controller", error.message);
@@ -151,10 +155,19 @@ export const verifyEmail = async (req, res) => {
     });
     if (!tokenVerify) return res.status(400).send({ message: "Invalid link" });
 
-    await User.findByIdAndUpdate({ _id: user._id }, { isVerified: true });
+    const userUpdate = await User.findByIdAndUpdate(
+      { _id: user._id },
+      { isVerified: true }
+    );
     await Token.deleteOne({ token: token });
 
-    res.status(200).send({ message: "Email verified successfully" });
+    res.status(200).json({
+      _id: userUpdate._id,
+      fullname: userUpdate.fullName,
+      username: userUpdate.username,
+      gender: userUpdate.gender,
+      birthday: userUpdate.birthday,
+    });
   } catch (error) {
     console.log("Error in verify email Controller", error.message);
     res.status(500).send({ message: "Internal Server Error" });

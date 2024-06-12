@@ -13,10 +13,9 @@ const likePost = mongoose.Schema(
       ref: "Post",
       required: true,
     },
-
-    typeLike: {
-      type: String,
-      enum: ["like", "love", "haha", "wow", "sad", "angry"],
+    isLiked: {
+      type: Boolean,
+      default: false,
     },
   },
   {

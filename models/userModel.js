@@ -14,6 +14,10 @@ const user = new mongoose.Schema(
       type: String,
       unique: true,
     },
+    bio: {
+      type: String,
+      default: "Hey there! I'm using ChatChat",
+    },
     isVerified: {
       type: Boolean,
       default: false,
@@ -32,7 +36,6 @@ const user = new mongoose.Schema(
     },
     profilePicture: {
       type: String,
-      default: "../assets/avatarDefault.jpg",
     },
     birthday: {
       type: Date,

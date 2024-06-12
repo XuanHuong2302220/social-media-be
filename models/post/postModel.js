@@ -14,7 +14,6 @@ const posts = mongoose.Schema(
     image: {
       type: String,
       default: "",
-      required: true,
     },
     likePostId: [
       {
