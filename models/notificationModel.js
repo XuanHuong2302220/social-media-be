@@ -25,10 +25,6 @@ const notifi = mongoose.Schema(
       type: String,
       required: true,
     },
-    typeLike: {
-      type: String,
-      enum: ["like", "love", "haha", "wow", "sad", "angry"],
-    },
   },
   {
     timestamps: true,

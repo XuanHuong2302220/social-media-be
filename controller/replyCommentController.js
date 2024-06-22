@@ -32,39 +32,35 @@ export const createReplyComment = async (req, res) => {
     });
 
     if (newReplyComment) {
-      post.commentId.push(newReplyComment._id);
-      await post.save();
+      comment.replyComment.push(newReplyComment._id);
+      await comment.save();
 
-      if (userId.toString() === comment.senderId.toString()) {
-        return res.status(201).json({
-          message: "You can reply to your comment but not notify to you",
+      if (!userId.toString() === comment.senderId.toString()) {
+        const notify = await Notification.create({
+          senderId: userId,
+          receiverId: comment.senderId,
+          notiType: "replyComment",
+          notiText: `${req.user.fullName} replied to your comment`,
         });
-      }
 
-      const notify = await Notification.create({
-        senderId: userId,
-        receiverId: comment.senderId,
-        notiType: "replyComment",
-        notiText: `${req.user.fullName} replied to your comment`,
-      });
-
-      const notifyBox = await NotifyBox.findOne({ authorId: comment.senderId });
-
-      if (notifyBox) {
-        notifyBox.notifyId.push(notify._id);
-        await notifyBox.save();
-      } else {
-        await NotifyBox.create({
+        const notifyBox = await NotifyBox.findOne({
           authorId: comment.senderId,
-          notifyId: [notify._id],
         });
-      }
 
-      return res.status(201).json({
-        message: "Reply comment created successfully",
-        newReplyComment: newReplyComment,
-      });
+        if (notifyBox) {
+          notifyBox.notifyId.push(notify._id);
+          await notifyBox.save();
+        } else {
+          await NotifyBox.create({
+            authorId: comment.senderId,
+            notifyId: [notify._id],
+          });
+        }
+      }
     }
+    return res.status(201).json({
+      newReplyComment: newReplyComment,
+    });
   } catch (error) {
     console.log("Error in createReplyComment", error.message);
     res.status(500).json({ message: "Internal server error" });
@@ -86,10 +82,6 @@ export const getReplyComments = async (req, res) => {
     }
 
     const replyComments = await ReplyComment.find({ commentReply: commentId });
-
-    if (replyComments.length === 0) {
-      return res.status(200).json({ message: "No reply comment found" });
-    }
 
     return res.status(200).json({ replyComments });
   } catch (error) {

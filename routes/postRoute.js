@@ -11,7 +11,7 @@ import {
 const router = express.Router();
 
 router.get("/:userId", protectRoute, getPosts);
-router.get("/:id", protectRoute, getPost);
+router.get("/post/:id", protectRoute, getPost);
 router.post("/", protectRoute, createPost);
 router.put("/:id", protectRoute, editPost);
 router.delete("/:id", protectRoute, deletePost);

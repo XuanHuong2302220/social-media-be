@@ -26,6 +26,12 @@ const comments = mongoose.Schema(
         ref: "LikeComment",
       },
     ],
+    replyComment: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "ReplyComment",
+      },
+    ],
   },
   {
     timestamps: true,

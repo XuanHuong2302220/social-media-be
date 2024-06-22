@@ -8,66 +8,38 @@ export const createLike = async (req, res) => {
   try {
     const userLike = req.user._id;
 
+    const user = await User.findById(userLike);
+
     const { postId: postLike } = req.params;
-
-    const like = await LikePost.findOne({ userLike, postLike });
-
-    if (like)
-      return res
-        .status(400)
-        .json({ message: "You have already liked this post" });
-
-    const newLike = await LikePost.create({
-      userLike,
-      postLike,
-    });
-
-    if (newLike) {
-      newLike.isLiked = true;
-      await newLike.save();
-    }
 
     const post = await Post.findById(postLike);
 
     if (!post) return res.status(400).json({ message: "Post not found" });
 
-    if (post.likePostId.includes(newLike._id))
-      return res
-        .status(400)
-        .json({ message: "You have already liked this post" });
-
-    post.likePostId.push(newLike._id);
-    await post.save();
-
-    const user = await User.findById(userLike);
-
-    if (userLike.toString() === post.authorId.toString()) {
-      return res
-        .status(400)
-        .json({ message: "You can like, but don't notify" });
+    if (!post.likePostId.includes(userLike)) {
+      await post.likePostId.push(userLike);
+      await post.save();
     }
 
-    const noti = await Notification.create({
-      senderId: userLike,
-      receiverId: post.authorId,
-      notiType: "like",
-      notiText: `${user.fullName} expressed feelings about your post`,
-      typeLike: typeLike,
-    });
-
-    const notifyBox = await NotifyBox.findOne({ authorId: post.authorId });
-    if (!notifyBox.notifyId.includes(noti._id)) {
-      await NotifyBox.findOneAndUpdate(
-        { authorId: post.authorId },
-        {
-          $push: { notifyId: noti._id },
-        }
-      );
+    if (userLike.toString() !== post.authorId.toString()) {
+      const noti = await Notification.create({
+        senderId: userLike,
+        receiverId: post.authorId,
+        notiType: "like",
+        notiText: `${user.fullName} liked about your post`,
+      });
+      const notifyBox = await NotifyBox.findOne({ authorId: post.authorId });
+      if (!notifyBox.notifyId.includes(noti._id)) {
+        await NotifyBox.findOneAndUpdate(
+          { authorId: post.authorId },
+          {
+            $push: { notifyId: noti._id },
+          }
+        );
+      }
     }
 
-    res
-      .status(200)
-      .json({ message: "Like created successfully", like: newLike });
+    res.status(200).json({ message: "Like created successfully" });
   } catch (error) {
     console.log("error in createLikeController", error.message);
     res.status(500).json({ message: "Internal Server Error" });
@@ -81,52 +53,46 @@ export const getLikes = async (req, res) => {
 
     if (!post) res.status(400).json({ message: "Post not found" });
 
-    const like = await LikePost.find();
-    if (!like) res.status(400).json({ message: "No user have liked it yet" });
+    const likes = await Promise.all(
+      post.likePostId?.map(async (userId) => {
+        return await User.findById(userId).select("-password");
+      })
+    );
 
-    res.status(200).json({
-      likes: like.length,
-      like: like,
-    });
+    const sortLikes = [...likes];
+    sortLikes.sort((a, b) => b.createdAt - a.createdAt);
+
+    res.status(200).json(
+      sortLikes?.map((like) => {
+        return {
+          _id: like._id,
+          fullname: like.fullName,
+          username: like.username,
+          gender: like.gender,
+          birthday: like.birthday,
+          bio: like.bio,
+          profilePicture: like.profilePicture,
+        };
+      })
+    );
   } catch (error) {
     console.log("error in getLikesController", error.message);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
-export const getLike = async (req, res) => {
-  try {
-    const { postId } = req.params;
-    const id = req.user._id;
-    const post = await Post.findById(postId);
-    if (!post) res.status(400).json({ message: "Post not found" });
-
-    const like = await LikePost.findOne({ userLike: id, postLike: postId });
-    if (!like)
-      res.status(400).json({ message: "You have not liked this post" });
-
-    res.status(200).json(like);
-  } catch (error) {
-    console.log("error in getLikeController", error.message);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-};
-
 export const deleteLike = async (req, res) => {
   try {
-    const { postId, id } = req.params;
+    const { postId } = req.params;
+
+    const id = req.user._id;
 
     const post = await Post.findById(postId);
 
     if (!post) res.status(400).json({ message: "Post not found" });
 
-    const like = await LikePost.findByIdAndDelete(id);
-
-    if (!like) res.status(400).json({ message: "Like not found" });
-
-    post.likePostId = post.likePostId.filter((likeId) => {
-      likeId.toString() !== id.toString();
-      console.log(likeId);
+    post.likePostId = post.likePostId.filter((userId) => {
+      userId.toString() !== id.toString();
     });
 
     await post.save();

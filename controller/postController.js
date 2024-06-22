@@ -25,8 +25,8 @@ export const getPosts = async (req, res) => {
           title: post.title,
           image: post.image,
           authorName: author.fullName,
-          like: post.likePostId.length,
-          comment: post.commentId.length,
+          like: post.likePostId,
+          comment: post.commentId,
         };
       })
     );
@@ -46,19 +46,17 @@ export const getPost = async (req, res) => {
     const post = await Post.findById(id);
     if (!post) return res.status(400).json("Not post created yet");
 
-    const comments = await Comment.findOne({ postComment: id });
+    // const comments = await Comment.findOne({ postComment: id });
 
-    if (!comments) return res.status(400).json("Not comment created yet");
+    // if (!comments) return res.status(400).json("Not comment created yet");
 
     res.status(200).json({
-      post: {
-        _id: post._id,
-        authorId: post.authorId,
-        title: post.title,
-        image: post.image,
-        like: post.likePostId.length,
-        comment: post.commentId.length,
-      },
+      _id: post._id,
+      authorId: post.authorId,
+      title: post.title,
+      image: post.image,
+      like: post.likePostId,
+      comment: post.commentId,
     });
   } catch (error) {
     console.log("Error in getPost controller", error.message);
@@ -112,7 +110,7 @@ export const editPost = async (req, res) => {
       { new: true }
     );
     if (updatedPost) {
-      return res.status(200).json("Updated Post successfully");
+      return res.status(200).json(updatedPost);
     }
   } catch (error) {
     console.log("Error in editPost controller", error.message);
@@ -174,8 +172,8 @@ export const getPostHome = async (req, res) => {
         authorName: author.fullName,
         title: p.title,
         image: p.image,
-        like: p.likePostId.length,
-        comment: p.commentId.length,
+        like: p.likePostId,
+        comment: p.commentId,
       };
     });
 

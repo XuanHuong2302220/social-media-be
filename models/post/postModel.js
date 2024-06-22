@@ -18,7 +18,7 @@ const posts = mongoose.Schema(
     likePostId: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "LikePost",
+        ref: "User",
       },
     ],
     commentId: [

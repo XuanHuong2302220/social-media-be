@@ -13,10 +13,6 @@ const likePost = mongoose.Schema(
       ref: "Post",
       required: true,
     },
-    isLiked: {
-      type: Boolean,
-      default: false,
-    },
   },
   {
     timestamps: true,

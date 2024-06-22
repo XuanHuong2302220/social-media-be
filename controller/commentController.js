@@ -28,34 +28,31 @@ export const sendComment = async (req, res) => {
       await post.save();
     }
 
-    if (userId.toString() === post.authorId.toString()) {
-      return res
-        .status(400)
-        .json({ message: "You can like, but don't notify" });
+    if (!userId.toString() === post.authorId.toString()) {
+      const noti = await Notification.create({
+        senderId: userId,
+        receiverId: post.authorId,
+        notiType: "comment",
+        notiText: `${req.user.fullName} commented on your post`,
+      });
+
+      const notifyBox = await NotifyBox.findOne({ authorId: post.authorId });
+      if (!notifyBox) {
+        res.status(400).json({ message: "NotifyBox not found" });
+      }
+      if (!notifyBox.notifyId.includes(noti._id)) {
+        await NotifyBox.findOneAndUpdate(
+          {
+            authorId: post.authorId,
+          },
+          {
+            $push: { notifyId: noti._id },
+          }
+        );
+      }
     }
 
-    const noti = await Notification.create({
-      senderId: userId,
-      receiverId: post.authorId,
-      notiType: "comment",
-      notiText: `${req.user.fullName} commented on your post`,
-    });
-
-    const notifyBox = await NotifyBox.findOne({ authorId: post.authorId });
-    if (!notifyBox) {
-      res.status(400).json({ message: "NotifyBox not found" });
-    }
-    if (!notifyBox.notifyId.includes(noti._id)) {
-      await NotifyBox.findOneAndUpdate(
-        {
-          authorId: post.authorId,
-        },
-        {
-          $push: { notifyId: noti._id },
-        }
-      );
-    }
-    return res.status(201).json({ message: "Comment created", newComment });
+    return res.status(201).json(newComment);
   } catch (error) {
     console.log("error in sendComment", error.message);
     res.status(500).json({ message: "Internal Server Error" });
@@ -67,15 +64,16 @@ export const getComments = async (req, res) => {
     const post = await Post.findById(postId);
     if (!post) return res.status(400).json({ message: "Post not found" });
 
-    const comments = await Comment.findById(post.commentId);
+    const comments = [...post.commentId];
+    comments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    if (!comments)
-      return res.status(400).json({ message: "Not comment created yet" });
+    const sortedComments = await Promise.all(
+      comments?.map(async (comment) => {
+        return await Comment.findById(comment);
+      })
+    );
 
-    return res.status(200).json({
-      message: "All comments",
-      comments: comments,
-    });
+    return res.status(200).json(sortedComments);
   } catch (error) {
     console.log("error in getComments", error.message);
     res.status(500).json({ message: "Internal Server Error" });
